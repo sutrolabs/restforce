@@ -3,6 +3,7 @@ gemspec
 
 gem 'faraday', '~> 0.13.1'
 gem 'jruby-openssl', platforms: :jruby
+gem 'jwt'
 gem 'rake'
 
 group :development do
