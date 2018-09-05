@@ -25,7 +25,7 @@ Features include:
 
 Add this line to your application's Gemfile:
 
-    gem 'restforce', '~> 2.5.3'
+    gem 'restforce', '~> 3.1.0'
 
 And then execute:
 
@@ -35,11 +35,9 @@ Or install it yourself as:
 
     $ gem install restforce
 
-__As of [version 2.5.0](https://github.com/restforce/restforce/blob/master/CHANGELOG.md#250-dec-5-2016), this gem is only compatible with Ruby 2.0.0 and later.__ To use Ruby 1.9.3, you'll need to manually specify that you wish to use version 2.4.2, or 1.5.3 for Ruby 1.9.2 support.
+__As of [version 3.0.0](https://github.com/restforce/restforce/blob/master/CHANGELOG.md#300-aug-2-2018), this gem is only compatible with Ruby 2.3.0 and later.__ You'll need to use version 2.5.3 or earlier if you're running on Ruby 2.2, 2.1 or 2.0. For Ruby 1.9.3, you'll need to manually specify that you wish to use version 2.4.2.
 
-The library is only tested with Ruby 2.2.0 onwards. It may work with Ruby 2.0 and Ruby 2.1, but this is not guaranteed.
-
-This gem is versioned using [Semantic Versioning](http://semver.org/), so you can be confident when updating that there will not be breaking changes outside of a major version (following format MAJOR.MINOR.PATCH, so for instance moving from 2.3.0 to 3.0.0 would be allowed to include incompatible API changes). See the [changelog](https://github.com/restforce/restforce/tree/master/CHANGELOG.md) for details on what has changed in each version.
+This gem is versioned using [Semantic Versioning](http://semver.org/), so you can be confident when updating that there will not be breaking changes outside of a major version (following format MAJOR.MINOR.PATCH, so for instance moving from 3.1.0 to 4.0.0 would be allowed to include incompatible API changes). See the [changelog](https://github.com/restforce/restforce/tree/master/CHANGELOG.md) for details on what has changed in each version.
 
 ## Usage
 
@@ -65,7 +63,7 @@ It is also important to note that the client object should not be reused across 
 ```ruby
 client = Restforce.new(oauth_token: 'access_token',
                        instance_url: 'instance url',
-                       api_version: '38.0')
+                       api_version: '41.0')
 ```
 
 Although the above will work, you'll probably want to take advantage of the (re)authentication middleware by specifying `refresh_token`, `client_id`, `client_secret`, and `authentication_callback`:
@@ -77,7 +75,7 @@ client = Restforce.new(oauth_token: 'access_token',
                        client_id: 'client_id',
                        client_secret: 'client_secret',
                        authentication_callback: Proc.new { |x| Rails.logger.debug x.to_s },
-                       api_version: '38.0')
+                       api_version: '41.0')
 ```
 
 The middleware will use the `refresh_token` automatically to acquire a new `access_token` if the existing `access_token` is invalid.
@@ -110,7 +108,7 @@ client = Restforce.new(username: 'foo',
                        security_token: 'security token',
                        client_id: 'client_id',
                        client_secret: 'client_secret',
-                       api_version: '38.0')
+                       api_version: '41.0')
 ```
 
 #### JWT Bearer Token
@@ -134,7 +132,7 @@ export SALESFORCE_PASSWORD="password"
 export SALESFORCE_SECURITY_TOKEN="security token"
 export SALESFORCE_CLIENT_ID="client id"
 export SALESFORCE_CLIENT_SECRET="client secret"
-export SALESFORCE_API_VERSION="38.0"
+export SALESFORCE_API_VERSION="41.0"
 ```
 
 ```ruby
@@ -152,7 +150,7 @@ client = Restforce.new(username: 'foo',
                        client_id: 'client_id',
                        client_secret: 'client_secret',
                        proxy_uri: 'http://proxy.example.com:123',
-                       api_version: '38.0')
+                       api_version: '41.0')
 ```
 
 You may specify a username and password for the proxy with a URL along the lines of 'http://user:password@proxy.example.com:123'.
@@ -182,19 +180,19 @@ end
 
 By default, the gem defaults to using Version 26.0 (Winter '13) of the Salesforce API. This maintains backwards compatibility for existing users.
 
-__We strongly suggest configuring Restforce to use the most recent API version, currently Version 38.0 (Winter '17) to get the best Salesforce API experience__ - for example, some more recently-added API endpoints will not be available without moving to a more recent
+__We strongly suggest configuring Restforce to use the most recent API version, currently Version 41.0 (Winter '18) to get the best Salesforce API experience__ - for example, some more recently-added API endpoints will not be available without moving to a more recent
 version. If you're trying to use a method that is unavailable with your API version,
 Restforce will raise an `APIVersionError`.
 
 There are three ways to set the API version:
 
-* Passing in an `api_version` option when instantiating `Restforce` (i.e. `Restforce.new(api_version: '38.0')`)
-* Setting the `SALESFORCE_API_VERSION` environment variable (i.e. `export SALESFORCE_API_VERSION="38.0"`)
+* Passing in an `api_version` option when instantiating `Restforce` (i.e. `Restforce.new(api_version: '41.0')`)
+* Setting the `SALESFORCE_API_VERSION` environment variable (i.e. `export SALESFORCE_API_VERSION="41.0"`)
 * Configuring the version globally with `Restforce.configure`:
 
 ```ruby
 Restforce.configure do |config|
-  config.api_version = '38.0'
+  config.api_version = '41.0'
   # ...
 end
 ```
@@ -220,7 +218,7 @@ to include the `sforce-auto-assign` header in all client HTTP requests:
 ```ruby
 client = Restforce.new(oauth_token: 'access_token',
                        instance_url: 'instance url',
-                       api_version: '38.0',
+                       api_version: '41.0',
                        request_headers: { 'sforce-auto-assign' => 'FALSE' })
 
 ```
@@ -561,7 +559,102 @@ end
 Boom, you're now receiving push notifications when Accounts are
 created/updated.
 
-_See also: [Force.com Streaming API docs](http://www.salesforce.com/us/developer/docs/api_streaming/index.htm)_
+#### Replaying Events
+
+Since API version 37.0, Salesforce stores events for 24 hours and they can be
+replayed if your application experienced some downtime.
+
+In order to replay past events, all you need to do is specify the last known
+event ID when subscribing and you will receive all events that happened since
+that event ID:
+
+```ruby
+EM.run {
+  # Subscribe to the PushTopic.
+  client.subscribe 'AllAccounts', replay: 10 do |message|
+    puts message.inspect
+  end
+}
+```
+
+In this specific case you will see events with replay ID 11, 12 and so on.
+
+There are two magic values for the replay ID accepted by Salesforce:
+
+* `-2`, for getting all the events that appeared in the last 24 hours
+* `-1`, for getting only newer events
+
+**Warning**: Only use a replay ID of a event from the last 24 hours otherwise
+Salesforce will not send anything, including newer events. If in doubt, use one
+of the two magic replay IDs mentioned above. 
+
+You might want to store the replay ID in some sort of datastore so you can 
+access it, for example between application restarts. In that case, there is the
+option of passing a custom replay handler which responds to `[]` and `[]=`.
+
+Below is a sample replay handler that stores the replay ID for each channel in
+memory using a Hash, stores a timestamp and has some rudimentary logic that 
+will use one of the magic IDs depending on the value of the timestamp:
+
+```ruby
+class SimpleReplayHander
+
+  MAX_AGE = 86_400 # 24 hours
+
+  INIT_REPLAY_ID = -1
+  DEFAULT_REPLAY_ID = -2
+
+  def initialize
+    @channels = {}
+    @last_modified = nil
+  end
+
+  # This method is called during the initial subscribe phase
+  # in order to send the correct replay ID.
+  def [](channel)
+    if @last_modified.nil?
+      puts "[#{channel}] No timestamp defined, sending magic replay ID #{INIT_REPLAY_ID}"
+
+      INIT_REPLAY_ID
+    elsif old_replay_id?
+      puts "[#{channel}] Old timestamp, sending magic replay ID #{DEFAULT_REPLAY_ID}"
+
+      DEFAULT_REPLAY_ID
+    else
+      @channels[channel]
+    end
+  end
+
+  def []=(channel, replay_id)
+    puts "[#{channel}] Writing replay ID: #{replay_id}"
+
+    @last_modified = Time.now
+    @channels[channel] = replay_id
+  end
+
+  def old_replay_id?
+    @last_modified.is_a?(Time) && Time.now - @last_modified > MAX_AGE
+  end
+end
+```
+
+In order to use it, simply pass the object as the value of the `replay` option
+of the subscription:
+
+```ruby
+EM.run {
+  # Subscribe to the PushTopic and use the custom replay handler to store any
+  # received replay ID.
+  client.subscribe 'AllAccounts', replay: SimpleReplayHandler.new do |message|
+    puts message.inspect
+  end
+}
+``` 
+
+_See also_: 
+
+* [Force.com Streaming API docs](http://www.salesforce.com/us/developer/docs/api_streaming/index.htm)
+* [Message Durability docs](https://developer.salesforce.com/docs/atlas.en-us.api_streaming.meta/api_streaming/using_streaming_api_durability.htm)
 
 *Note:* Restforce's streaming implementation is known to be compatible with version `0.8.9` of the faye gem.
 

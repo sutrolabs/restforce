@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Restforce
   module Concerns
     module Picklists
@@ -81,8 +83,8 @@ module Restforce
         # cribesobjects_describesobjectresult.htm
         def valid?(picklist_entry)
           valid_for = picklist_entry['validFor'].ljust(16, 'A').unpack('m').first.
-                      unpack('q*')
-          (valid_for[index >> 3] & (0x80 >> index % 8)) != 0
+                      unpack('C*')
+          (valid_for[index >> 3] & (0x80 >> index % 8)).positive?
         end
       end
     end

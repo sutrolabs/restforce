@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 describe Restforce::Concerns::API do
@@ -27,7 +29,7 @@ describe Restforce::Concerns::API do
     it 'returns the body' do
       start_string = '2002-10-31T00:02:02Z'
       end_string = '2003-10-31T00:02:02Z'
-      url = "/sobjects/Whizbang/updated/?start=#{start_string}&end=#{end_string}"
+      url = "sobjects/Whizbang/updated/?start=#{start_string}&end=#{end_string}"
       client.should_receive(:api_get).
         with(url).
         and_return(response)
@@ -43,7 +45,7 @@ describe Restforce::Concerns::API do
     it 'returns the body' do
       start_string = '2002-10-31T00:02:02Z'
       end_string = '2003-10-31T00:02:02Z'
-      url = "/sobjects/Whizbang/deleted/?start=#{start_string}&end=#{end_string}"
+      url = "sobjects/Whizbang/deleted/?start=#{start_string}&end=#{end_string}"
       client.should_receive(:api_get).
         with(url).
         and_return(response)
@@ -316,6 +318,16 @@ describe Restforce::Concerns::API do
         end
       end
 
+      context 'when the id field contains special characters' do
+        let(:attrs) { { id: '1234/?abc', StageName: "Call Scheduled" } }
+
+        it 'sends an HTTP PATCH, and encodes the ID' do
+          client.should_receive(:api_patch).
+            with('sobjects/Whizbang/1234%2F%3Fabc', StageName: "Call Scheduled")
+          expect(result).to be_true
+        end
+      end
+
       context 'when the id field is missing from the attrs' do
         it "raises an error" do
           expect { client.update!(sobject, attrs) }.
@@ -332,17 +344,27 @@ describe Restforce::Concerns::API do
 
       context 'when the record is found and updated' do
         it 'returns true' do
-          response.body.stub :[]
+          response.stub(:body) { {} }
           client.should_receive(:api_patch).
             with('sobjects/Whizbang/External_ID__c/1234', {}).
             and_return(response)
           expect(result).to be_true
         end
+
+        context 'and the response body is a string' do
+          it 'returns true' do
+            response.stub(:body) { '' }
+            client.should_receive(:api_patch).
+              with('sobjects/Whizbang/External_ID__c/1234', {}).
+              and_return(response)
+            expect(result).to be_true
+          end
+        end
       end
 
       context 'when the record is found and created' do
         it 'returns the id of the record' do
-          response.body.stub(:[]).with('id').and_return('4321')
+          response.stub(:body) { { "id" => "4321" } }
           client.should_receive(:api_patch).
             with('sobjects/Whizbang/External_ID__c/1234', {}).
             and_return(response)
@@ -366,7 +388,7 @@ describe Restforce::Concerns::API do
 
         context 'and the value for Id is provided' do
           it 'returns the id of the record, and original record still contains id' do
-            response.body.stub(:[]).with('id').and_return('4321')
+            response.stub(:body) { { "id" => "4321" } }
             client.should_receive(:api_patch).
               with('sobjects/Whizbang/Id/4321', {}).
               and_return(response)
@@ -379,7 +401,7 @@ describe Restforce::Concerns::API do
           let(:attrs) { { 'External_ID__c' => '1234' } }
 
           it 'uses POST to create the record' do
-            response.body.stub(:[]).with('id').and_return('4321')
+            response.stub(:body) { { "id" => "4321" } }
             client.should_receive(:options).and_return(api_version: 38.0)
             client.should_receive(:api_post).
               with('sobjects/Whizbang/Id', attrs).
@@ -405,7 +427,7 @@ describe Restforce::Concerns::API do
 
       context 'when the record is found and updated' do
         it 'returns true' do
-          response.body.stub :[]
+          response.stub(:body) { {} }
           client.should_receive(:api_patch).
             with('sobjects/Whizbang/External_ID__c/%E3%81%82', {}).
             and_return(response)
@@ -422,7 +444,7 @@ describe Restforce::Concerns::API do
 
       context 'when the record is found and updated' do
         it 'returns true' do
-          response.body.stub :[]
+          response.stub(:body) { {} }
           client.should_receive(:api_patch).
             with('sobjects/Whizbang/External_ID__c/1234', {}).
             and_return(response)
@@ -441,6 +463,16 @@ describe Restforce::Concerns::API do
       client.should_receive(:api_delete).
         with('sobjects/Whizbang/1234')
       expect(result).to be_true
+    end
+
+    context 'when the id field contains special characters' do
+      let(:id) { '1234/?abc' }
+
+      it 'sends an HTTP delete, and encodes the ID' do
+        client.should_receive(:api_delete).
+          with('sobjects/Whizbang/1234%2F%3Fabc')
+        expect(result).to be_true
+      end
     end
   end
 
@@ -476,6 +508,16 @@ describe Restforce::Concerns::API do
       it 'returns the full representation of the object' do
         client.should_receive(:api_get).
           with('sobjects/Whizbang/External_ID__c/%E3%81%82').
+          and_return(response)
+        expect(result).to eq response.body
+      end
+    end
+
+    context 'when an internal ID which contains special characters is specified' do
+      let(:id)    { "1234/?abc" }
+      it 'returns the full representation of the object' do
+        client.should_receive(:api_get).
+          with('sobjects/Whizbang/1234%2F%3Fabc').
           and_return(response)
         expect(result).to eq response.body
       end
@@ -549,6 +591,16 @@ describe Restforce::Concerns::API do
             and_return(response)
           expect(result).to eq response.body
         end
+      end
+    end
+
+    context 'when an internal ID which contains special characters is specified' do
+      let(:id)    { "1234/?abc" }
+      it 'returns the full representation of the object' do
+        client.should_receive(:api_get).
+          with('sobjects/Whizbang/1234%2F%3Fabc').
+          and_return(response)
+        expect(result).to eq response.body
       end
     end
   end
